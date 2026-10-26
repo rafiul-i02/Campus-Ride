@@ -1,3 +1,4 @@
+import os
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
@@ -141,7 +142,7 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
   </div>
 </section>
 
-<!-- Urgent Notices Management Section (Newly Added) -->
+<!-- Urgent Notices Management Section -->
 <section id="urgent-notices" class="page">
   <div class="page-title"><h2>📢 Urgent Notice Management</h2><p>Publish critical transport announcements to display instantly on the website front page.</p></div>
   <div class="panel">
@@ -298,7 +299,7 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
   </div>
 </section>
 
-<!-- Driver / Dispatcher Portal Section -->
+<!-- Dispatcher Portal Section -->
 <section id="dispatcher" class="page">
   <div class="page-title"><h2>🚦 Driver / Dispatcher Portal & ETA</h2><p>Record departures, stop arrivals, delays, trip completions, cancellations and Estimated Time of Arrival (ETA).</p></div>
   <div class="panel">
@@ -589,7 +590,6 @@ async function fetchNotices() {
   const res = await fetch('/api/urgent-notices');
   const data = await res.json();
   
-  // Render Home Dashboard Notice
   const homeBox = document.getElementById('homeNoticeContainer');
   if (data.length > 0) {
     homeBox.innerHTML = data.map(n => `
@@ -602,7 +602,6 @@ async function fetchNotices() {
     homeBox.innerHTML = '<p class="muted">বর্তমানে কোনো জরুরি নোটিশ নেই।</p>';
   }
 
-  // Render Notices Table
   const tbody = document.getElementById('noticeTable');
   tbody.innerHTML = data.length ? data.map(n => `
     <tr><td>${escapeHTML(n.title)}</td><td>${escapeHTML(n.content)}</td><td>${escapeHTML(n.time)}</td>
@@ -1321,4 +1320,5 @@ def handle_intentions():
     return jsonify(intentions_db)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
