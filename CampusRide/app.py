@@ -38,7 +38,19 @@ routes_db = [
 
 trips_db = []
 intentions_db = []
-feedback_db = []
+saved_routes_db = []
+feedback_db = [
+    {"id": "FB-01", "name": "রাফিউল ইসলাম", "type": "Passenger Feedback", "details": "বাস সময়মতো ছেড়েছে, সেবা চমৎকার।", "status": "Resolved"}
+]
+dispatch_logs_db = []
+breakdowns_db = []
+notifications_db = []
+maintenance_db = [
+    {"id": "M-01", "type": "Maintenance Need", "target": "BUS-02", "details": "ইঞ্জিন ওভারহিট সমস্যা", "status": "Pending"}
+]
+urgent_notices_db = [
+    {"id": "N-01", "title": "জরুরি বিজ্ঞপ্তি", "content": "বিশেষ পরিস্থিতির কারণে আগামীকাল সকালের সকল বাস যথাসময়ে ছেড়ে যাবে।", "time": "আজ, সকাল ১০:০০"}
+]
 
 @app.route("/")
 def home():
@@ -75,7 +87,10 @@ table{border-collapse:collapse;width:100%;min-width:620px}
 th,td{padding:12px;text-align:left;border:1px solid #cbd5e1}
 th{background:#eaf1fb;color:#123b70}
 .badge{display:inline-block;background:#fff3cd;color:#805b00;padding:6px 10px;border-radius:20px;font-size:12px}
-.notice{padding:15px;border-left:4px solid #1769aa;background:#eff6ff;border-radius:5px;margin-bottom:12px;line-height:1.6}
+.badge.danger{background:#fee2e2;color:#991b1b}
+.badge.success{background:#d1fae5;color:#065f46}
+.badge.warning{background:#fef3c7;color:#92400e}
+.notice{padding:15px;border-left:4px solid #ef4444;background:#fef2f2;border-radius:5px;margin-bottom:12px;line-height:1.6;color:#991b1b}
 .btn{margin:2px}.btn.danger{background:#fee2e2;color:#991b1b}
 .btn.warning{background:#fef3c7;color:#92400e}
 footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:white}
@@ -92,13 +107,18 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
 
 <nav>
   <button class="active" data-page="dashboard" onclick="showPage('dashboard',this)">Dashboard</button>
+  <button data-page="urgent-notices" onclick="showPage('urgent-notices',this)">📢 Urgent Notices</button>
   <button data-page="routes" onclick="showPage('routes',this)">Route Management</button>
   <button data-page="schedule" onclick="showPage('schedule',this)">Bus Schedule</button>
   <button data-page="drivers" onclick="showPage('drivers',this)">Driver Management</button>
   <button data-page="buses" onclick="showPage('buses',this)">Bus Management</button>
   <button data-page="trips" onclick="showPage('trips',this)">Trip Scheduling</button>
+  <button data-page="dispatcher" onclick="showPage('dispatcher',this)">Dispatcher & ETA</button>
+  <button data-page="breakdowns" onclick="showPage('breakdowns',this)">Breakdowns</button>
+  <button data-page="reports-analytics" onclick="showPage('reports-analytics',this)">History & Reports</button>
+  <button data-page="feedback" onclick="showPage('feedback',this)">Feedback</button>
+  <button data-page="maintenance" onclick="showPage('maintenance',this)">Maintenance</button>
   <button data-page="student" onclick="showPage('student',this)">Student Portal</button>
-  <button data-page="reports" onclick="showPage('reports',this)">Reports & Feedback</button>
   <button data-page="about" onclick="showPage('about',this)">About</button>
 </nav>
 
@@ -111,14 +131,37 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
     <div class="card"><h3>বাস রেকর্ড</h3><div class="number" id="busCount">0</div><p class="muted">সক্রিয় বাস</p></div>
     <div class="card"><h3>নির্ধারিত ট্রিপ</h3><div class="number" id="tripCount">0</div><p class="muted">সিস্টেমে ট্রিপ</p></div>
   </div>
+  <div class="panel"><h3>🚨 জরুরি পরিবহন নোটিশ বোর্ড (Live Notice)</h3><div id="homeNoticeContainer">লোড হচ্ছে...</div></div>
   <div class="panel"><h3>দ্রুত প্রবেশ</h3>
     <div class="schedule-buttons">
-      <button onclick="showPage('routes')">রুট ম্যানেজমেন্ট দেখুন</button>
-      <button onclick="openSchedule('regular')">অফিশিয়াল সময়সূচী</button>
-      <button onclick="showPage('trips')">ট্রিপ শিডিউলিং</button>
+      <button onclick="showPage('urgent-notices')">জরুরি নোটিশ প্রকাশ করুন</button>
+      <button onclick="showPage('dispatcher')">ডিসপ্যাচার ও ETA পোর্টাল</button>
+      <button onclick="showPage('student')">স্টুডেন্ট পোর্টাল</button>
     </div>
   </div>
-  <div class="panel"><h3>📢 পরিবহন নোটিশ</h3><div class="notice">সমস্ত ম্যানেজমেন্ট সেকশনে এখন Delete-এর পাশাপাশি Edit অপশন যুক্ত করা হয়েছে।</div></div>
+</section>
+
+<!-- Urgent Notices Management Section (Newly Added) -->
+<section id="urgent-notices" class="page">
+  <div class="page-title"><h2>📢 Urgent Notice Management</h2><p>Publish critical transport announcements to display instantly on the website front page.</p></div>
+  <div class="panel">
+    <h3>নতুন জরুরি নোটিশ প্রকাশ করুন</h3>
+    <form id="noticeForm">
+      <div class="form-grid">
+        <div><label>নোটিশের শিরোনাম (Title)</label><input id="nTitle" placeholder="যেমন: জরুরি বিজ্ঞপ্তি" required></div>
+        <div><label>প্রকাশের সময় (Time)</label><input id="nTime" placeholder="যেমন: আজ, দুপুর ২:০০" required></div>
+      </div>
+      <div><label>নোটিশের বিস্তারিত বিবরণ (Content)</label><textarea id="nContent" rows="3" placeholder="নোটিশের বিস্তারিত বার্তা এখানে লিখুন..." required></textarea></div>
+      <button class="btn primary" type="submit">নোটিশ পাবলিশ করুন</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>প্রকাশিত নোটিশসমূহ</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>শিরোনাম</th><th>বিস্তারিত</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="noticeTable"><tr><td colspan="4">কোনো নোটিশ নেই।</td></tr></tbody>
+    </table></div>
+  </div>
 </section>
 
 <!-- Route Management Section -->
@@ -159,11 +202,6 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
     </div>
     <h3 id="scheduleHeading">পাবলিক বাস রুটিন ও সময়</h3>
     <div id="scheduleContent"></div>
-    <div class="small-note" style="margin-top:20px; border-top:1px solid #cbd5e1; padding-top:10px;">
-      <p><strong>বিশেষ নির্দেশনা:</strong></p>
-      <p>১. বিশেষ কারণে এবং কর্তৃপক্ষের নির্দেশক্রমে বিশ্ববিদ্যালয় বাসের সময়সূচী পরিবর্তন হতে পারে।</p>
-      <p>২. হঠাৎ গাড়ী নষ্ট হলে অথবা রাস্তায় ট্রাফিক জ্যামের কারণে বিশ্ববিদ্যালয় বাস গন্তব্যে পৌঁছাতে নির্দিষ্ট সময়ে কিছু তারতম্য হতে পারে।</p>
-    </div>
   </div>
 </section>
 
@@ -187,8 +225,7 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
     </form>
   </div>
   <div class="panel">
-    <h3>ড্রাইভারের তালিকা</h3>
-    <input id="driverSearch" placeholder="খুঁজুন..." oninput="renderDrivers()">
+    <h3>ড্রাইভারের তালিকা (গোপনীয় নম্বরসহ)</h3>
     <div class="table-wrap"><table>
       <thead><tr><th>ID</th><th>নাম</th><th>মোবাইল</th><th>লাইসেন্স</th><th>বাস</th><th>অভিজ্ঞতা</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
       <tbody id="driverTable"><tr><td colspan="8">লোড হচ্ছে...</td></tr></tbody>
@@ -200,7 +237,7 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
 <section id="buses" class="page">
   <div class="page-title"><h2>🚌 Bus Management</h2><p>বিশ্ববিদ্যালয়ের বাস বহর ব্যবস্থাপনা।</p></div>
   <div class="panel">
-    <h3 id="busFormTitle">নতুন বাস যোগ করুন</h3>
+    <h3>নতুন বাস যোগ করুন</h3>
     <form id="busForm">
       <div class="form-grid">
         <div><label>বাস নম্বর / ID</label><input id="busId" placeholder="BUS-01" required></div>
@@ -216,13 +253,11 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
           </select>
         </div>
       </div>
-      <button class="btn primary" type="submit" id="busSubmitBtn">সংরক্ষণ করুন</button>
-      <button class="btn" type="button" onclick="resetBusForm()">রিসেট</button>
+      <button class="btn primary" type="submit">সংরক্ষণ করুন</button>
     </form>
   </div>
   <div class="panel">
     <h3>বাসের তালিকা</h3>
-    <input id="busSearch" placeholder="খুঁজুন..." oninput="renderBuses()">
     <div class="table-wrap"><table>
       <thead><tr><th>বাস ID</th><th>মডেল</th><th>ধারণক্ষমতা</th><th>রুট</th><th>ড্রাইভার</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
       <tbody id="busTable"><tr><td colspan="7">লোড হচ্ছে...</td></tr></tbody>
@@ -232,12 +267,19 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
 
 <!-- Trip Scheduling Section -->
 <section id="trips" class="page">
-  <div class="page-title"><h2>⏱️ Trip Scheduling & Overlap Detection</h2><p>ট্রিপ শিডিউল করুন এবং বাস বা ড্রাইভারের দ্বৈত এন্ট্রি এড়ান।</p></div>
+  <div class="page-title"><h2>⏱️ Trip Scheduling & Overlap Detection</h2><p>রিকারিং ও ওয়ান-অফ ট্রিপ শিডিউল করুন এবং সময় সংঘাত (Overlap) এড়ান।</p></div>
   <div class="panel">
     <h3>নতুন ট্রিপ শিডিউল</h3>
     <form id="tripForm">
       <div class="form-grid">
         <div><label>Trip ID</label><input id="tId" placeholder="TR-101" required></div>
+        <div><label>ট্রিপ টাইপ (Trip Type)</label>
+          <select id="tType" onchange="toggleTripDate()">
+            <option value="Recurring">Recurring (নিয়মিত/দৈনিক)</option>
+            <option value="One-off">One-off (এককালীন)</option>
+          </select>
+        </div>
+        <div id="dateDiv" style="display:none;"><label>নির্দিষ্ট তারিখ (Date)</label><input id="tDate" type="date"></div>
         <div><label>রুট</label><input id="tRoute" placeholder="সাতমাথা - ক্যাম্পাস" required></div>
         <div><label>বাস নম্বর</label><input id="tBus" placeholder="BUS-01" required></div>
         <div><label>ড্রাইভার ID</label><input id="tDriver" placeholder="DR-001" required></div>
@@ -250,54 +292,214 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
   <div class="panel">
     <h3>নির্ধারিত ট্রিপসমূহ</h3>
     <div class="table-wrap"><table>
-      <thead><tr><th>Trip ID</th><th>রুট</th><th>বাস</th><th>ড্রাইভার</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
-      <tbody id="tripTable"><tr><td colspan="6">কোনো ট্রিপ নির্ধারিত নেই।</td></tr></tbody>
+      <thead><tr><th>Trip ID</th><th>ধরন (Type)</th><th>তারিখ / বিবরণ</th><th>রুট</th><th>বাস</th><th>ড্রাইভার</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="tripTable"><tr><td colspan="8">কোনো ট্রিপ নির্ধারিত নেই।</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- Driver / Dispatcher Portal Section -->
+<section id="dispatcher" class="page">
+  <div class="page-title"><h2>🚦 Driver / Dispatcher Portal & ETA</h2><p>Record departures, stop arrivals, delays, trip completions, cancellations and Estimated Time of Arrival (ETA).</p></div>
+  <div class="panel">
+    <h3>ট্রিপ স্ট্যাটাস ও ETA আপডেট করুন</h3>
+    <form id="dispatchForm">
+      <div class="form-grid">
+        <div><label>Trip ID</label><input id="disTripId" placeholder="TR-101" required></div>
+        <div><label>অ্যাকশন / স্ট্যাটাস (Action Status)</label>
+          <select id="disStatus">
+            <option value="Departed">Departed (ছেড়ে গেছে)</option>
+            <option value="Stop Arrived">Stop Arrived (স্টপে পৌঁছেছে)</option>
+            <option value="Delayed">Delayed (বিলম্ব হয়েছে)</option>
+            <option value="Completed">Completed (সম্পন্ন হয়েছে)</option>
+            <option value="Cancelled">Cancelled (বাতিল করা হয়েছে)</option>
+          </select>
+        </div>
+        <div><label>আগমনের সম্ভাব্য সময় (ETA)</label><input id="disEta" placeholder="যেমন: সকাল ৯:১০ মিনিট" required></div>
+        <div><label>মন্তব্য / বিবরণ</label><input id="disRemarks" placeholder="যেমন: ট্রাফিক জ্যামের কারণে ১০ মিনিট দেরি" required></div>
+      </div>
+      <button class="btn primary" type="submit">স্ট্যাটাস ও ETA আপডেট করুন</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>লাইভ ট্রিপ প্রোগ্রেস ও ETA লগ</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Trip ID</th><th>স্ট্যাটাস</th><th>ETA (সম্ভাব্য সময়)</th><th>বিবরণ / মন্তব্য</th><th>আপডেটের সময়</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="dispatchTable"><tr><td colspan="6">কোনো লগ পাওয়া যায়নি।</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- Breakdown & Replacement Handling Section -->
+<section id="breakdowns" class="page">
+  <div class="page-title"><h2>🛠️ Breakdown & Replacement Handling</h2><p>Find available replacements for broken buses or absent drivers, or flag capacity shortages.</p></div>
+  <div class="panel">
+    <h3>ব্রেকডাউন বা অনুপস্থিতি রিপোর্ট ও রিপ্লেসমেন্ট ফাইন্ডার</h3>
+    <form id="breakdownForm">
+      <div class="form-grid">
+        <div><label>সমস্যার ধরন (Issue Type)</label>
+          <select id="bType">
+            <option value="Bus Breakdown">Bus Breakdown (বাস নষ্ট)</option>
+            <option value="Driver Absence">Driver Absence (ড্রাইভার অনুপস্থিত)</option>
+          </select>
+        </div>
+        <div><label>অফেক্টেড আইডি (Bus ID or Driver ID)</label><input id="bTargetId" placeholder="যেমন: BUS-02 বা DR-001" required></div>
+        <div><label>বিবরণ</label><input id="bDetails" placeholder="ইঞ্জিন সমস্যা বা অসুস্থতা" required></div>
+      </div>
+      <button class="btn primary" type="submit">বিকল্প খুঁজুন (Find Replacement)</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>ব্রেকডাউন ও রিপ্লেসমেন্ট লগ</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ধরন</th><th>টার্গেট আইডি</th><th>বিস্তারিত</th><th>রিপ্লেসমেন্ট স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="breakdownTable"><tr><td colspan="5">কোনো রেকর্ড নেই।</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- Trip History & Analytics Reports Section -->
+<section id="reports-analytics" class="page">
+  <div class="page-title"><h2>📈 Trip History & Analytics Reports</h2><p>Comprehensive reports on trip history, delays, cancellations, passenger demand, and vehicle usage.</p></div>
+  <div class="cards">
+    <div class="card"><h3>মোট ট্রিপ হিস্ট্রি</h3><div class="number" id="repTripCount">0</div><p class="muted">লগকৃত ট্রিপ</p></div>
+    <div class="card"><h3>বিলম্ব ও ক্যান্সেলেশন</h3><div class="number" id="repDelayCount">0</div><p class="muted">ইনসিডেন্ট ঘটনা</p></div>
+    <div class="card"><h3>মোট প্যাসেঞ্জার ডিমান্ড</h3><div class="number" id="repDemandCount">0</div><p class="muted">ইন্টেনশন সাবমিট</p></div>
+    <div class="card"><h3>ভেহিক্যাল ইউজেজ রেট</h3><div class="number" id="repUsageRate">100%</div><p class="muted">বাস ব্যবহার হার</p></div>
+  </div>
+  <div class="panel">
+    <h3>📊 বিলম্ব ও ক্যান্সেলেশন রিপোর্ট</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Trip ID / Route</th><th>ইভেন্ট টাইপ</th><th>কারণ / বিবরণ</th><th>সময়</th></tr></thead>
+      <tbody id="repDelayTable"><tr><td colspan="4">কোনো বিলম্ব বা ক্যান্সেলেশন রেকর্ড নেই।</td></tr></tbody>
+    </table></div>
+  </div>
+  <div class="panel">
+    <h3>🚍 ভেহিক্যাল ইউজেজ ও রুট ডিমান্ড অ্যানালিসিস</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>রুট</th><th>অ্যাসাইনড বাস</th><th>ধারণক্ষমতা</th><th>প্রত্যাশিত যাত্রী চাহিদা</th><th>ইউজেজ স্ট্যাটাস</th></tr></thead>
+      <tbody id="repUsageTable"><tr><td colspan="5">লোড হচ্ছে...</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- Passenger Feedback & Reports Section -->
+<section id="feedback" class="page">
+  <div class="page-title"><h2>💬 Passenger Feedback & Incident Reports</h2><p>Record passenger feedback, complaints and operational incidents with resolution tracking.</p></div>
+  <div class="panel">
+    <h3>নতুন ফিডব্যাক বা অভিযোগ জমা দিন</h3>
+    <form id="feedbackPortalForm">
+      <div class="form-grid">
+        <div><label>যাত্রীর নাম</label><input id="fbName" placeholder="আপনার নাম" required></div>
+        <div><label>ফিডব্যাকের ধরন (Type)</label>
+          <select id="fbType">
+            <option value="Passenger Feedback">Passenger Feedback (মতামত ও পরামর্শ)</option>
+            <option value="Complaint">Complaint (অভিযোগ)</option>
+            <option value="Incident Report">Incident Report (দুর্ঘটনা বা সমস্যা)</option>
+          </select>
+        </div>
+        <div><label>বিস্তারিত বিবরণ</label><input id="fbDetails" placeholder="আপনার মন্তব্য বা সমস্যা বিস্তারিত লিখুন..." required></div>
+      </div>
+      <button class="btn primary" type="submit">ফিডব্যাক জমা দিন</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>জমা হওয়া ফিডব্যাক ও রিপোর্টের তালিকা</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>নাম</th><th>ধরন</th><th>বিস্তারিত</th><th>স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="feedbackPortalTable"><tr><td colspan="6">কোনো ফিডব্যাক নেই।</td></tr></tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- Maintenance & Resolution Tracking Section -->
+<section id="maintenance" class="page">
+  <div class="page-title"><h2>🔧 Maintenance & Resolution Tracking</h2><p>Record maintenance needs, incidents, and track follow-up actions to resolution.</p></div>
+  <div class="panel">
+    <h3>নতুন মেইনটেন্যান্স রেকর্ড করুন</h3>
+    <form id="maintForm">
+      <div class="form-grid">
+        <div><label>রেকর্ডের ধরন (Type)</label>
+          <select id="mType">
+            <option value="Maintenance Need">Maintenance Need (মেইনটেন্যান্স প্রয়োজন)</option>
+            <option value="Incident Log">Incident Log (অনাকাঙ্ক্ষিত ঘটনা)</option>
+          </select>
+        </div>
+        <div><label>টার্গেট / বাস আইডি</label><input id="mTarget" placeholder="যেমন: BUS-02" required></div>
+        <div><label>বিস্তারিত বিবরণ (Details)</label><input id="mDetails" placeholder="বর্ণনা দিন..." required></div>
+        <div><label>রেজোলিউশন স্ট্যাটাস (Status)</label>
+          <select id="mStatus">
+            <option value="Pending">Pending (অপেক্ষমাণ)</option>
+            <option value="In Progress">In Progress (চলমান)</option>
+            <option value="Resolved">Resolved (সমাধানকৃত)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" type="submit">রেকর্ড সংরক্ষণ করুন</button>
+    </form>
+  </div>
+  <div class="panel">
+    <h3>মেইনটেন্যান্স ও রিজোলিউশন ট্র্যাকিং তালিকা</h3>
+    <div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>ধরণ</th><th>টার্গেট</th><th>বিস্তারিত বিবরণ</th><th>রিজোলিউশন স্ট্যাটাস</th><th>অ্যাকশন</th></tr></thead>
+      <tbody id="maintenanceTable"><tr><td colspan="6">কোনো রেকর্ড নেই।</td></tr></tbody>
     </table></div>
   </div>
 </section>
 
 <!-- Student Portal Section -->
 <section id="student" class="page">
-  <div class="page-title"><h2>🎓 Student Travel Intentions</h2><p>শিক্ষার্থীদের যাতায়াতের চাহিদা এবং রুট সংরক্ষণ।</p></div>
+  <div class="page-title"><h2>🎓 Student Portal & Demand Analysis</h2><p>শিডিউল দেখুন, পছন্দের রুট সেভ করুন, ট্রাভেল ইন্টেনশন দিন এবং বাসের ধারণক্ষমতার সাথে ডিমান্ড তুলনা করুন।</p></div>
+  
   <div class="panel">
-    <h3>চাহিদা জমা দিন</h3>
+    <h3>⭐ পছন্দের রুট সেভ করুন (Save Preferred Routes)</h3>
+    <form id="savedRouteForm">
+      <div class="form-grid">
+        <div><label>শিক্ষার্থীর নাম</label><input id="srName" placeholder="রাফিউল ইসলাম" required></div>
+        <div><label>পছন্দের রুট নির্বাচন করুন</label>
+          <select id="srRoute">
+            <option value="সাতমাথা টু ক্যাম্পাস">সাতমাথা টু ক্যাম্পাস</option>
+            <option value="বি-ব্লক টু ক্যাম্পাস">বি-ব্লক টু ক্যাম্পাস</option>
+            <option value="গোবিন্দগঞ্জ টু ক্যাম্পাস">গোবিন্দগঞ্জ টু ক্যাম্পাস</option>
+            <option value="শেরপুর টু ক্যাম্পাস">শেরপুর টু ক্যাম্পাস</option>
+            <option value="গাবতলী টু ক্যাম্পাস">গাবতলী টু ক্যাম্পাস</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" type="submit">রুট সেভ করুন</button>
+    </form>
+    <div style="margin-top:15px;">
+      <h4>আপনার সেভ করা রুটসমূহ:</h4>
+      <div id="savedRoutesList" class="muted" style="margin-top:5px;">কোনো রুট সেভ করা হয়নি।</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>🎫 ট্রাভেল ইন্টেনশন রেকর্ড করুন (Travel Intention)</h3>
     <form id="intentionForm">
       <div class="form-grid">
         <div><label>শিক্ষার্থীর নাম ও আইডি</label><input id="sName" placeholder="রাফিউল ইসলাম" required></div>
-        <div><label>পছন্দের রুট</label><input id="sRoute" placeholder="সাতমাথা থেকে ক্যাম্পাস" required></div>
+        <div><label>রুট</label>
+          <select id="sRoute">
+            <option value="সাতমাথা টু ক্যাম্পাস">সাতমাথা টু ক্যাম্পাস</option>
+            <option value="বি-ব্লক টু ক্যাম্পাস">বি-ব্লক টু ক্যাম্পাস</option>
+            <option value="গোবিন্দগঞ্জ টু ক্যাম্পাস">গোবিন্দগঞ্জ টু ক্যাম্পাস</option>
+            <option value="শেরপুর টু ক্যাম্পাস">শেরপুর টু ক্যাম্পাস</option>
+            <option value="গাবতলী টু ক্যাম্পাস">গাবতলী টু ক্যাম্পাস</option>
+          </select>
+        </div>
         <div><label>যাত্রার সময়</label><input id="sTime" type="datetime-local" required></div>
       </div>
-      <button class="btn primary" type="submit">জমা দিন</button>
+      <button class="btn primary" type="submit">ইন্টেনশন জমা দিন</button>
     </form>
   </div>
-  <div class="panel">
-    <h3>রেকর্ডকৃত ট্রাভেল ডিমান্ড</h3>
-    <div class="table-wrap"><table>
-      <thead><tr><th>শিক্ষার্থীর নাম</th><th>রুট</th><th>সময়</th><th>স্ট্যাটাস</th></tr></thead>
-      <tbody id="intentionTable"><tr><td colspan="4">কোনো রেকর্ড নেই।</td></tr></tbody>
-    </table></div>
-  </div>
-</section>
 
-<!-- Reports & Feedback Section -->
-<section id="reports" class="page">
-  <div class="page-title"><h2>📋 Reports & Breakdown Feedback</h2><p>গাড়ী নষ্ট হওয়া, বিলম্ব বা যেকোনো অভিযোগ লগ করুন।</p></div>
   <div class="panel">
-    <h3>রিপোর্ট জমা দিন</h3>
-    <form id="feedbackForm">
-      <div class="form-grid">
-        <div><label>রিপোর্টার নাম</label><input id="fName" placeholder="নাম" required></div>
-        <div><label>সমস্যার ধরন</label><select id="fType"><option>Bus Breakdown (গাড়ী নষ্ট)</option><option>Driver Absence (ড্রাইভার অনুপস্থিত)</option><option>Passenger Feedback (মতামত)</option></select></div>
-        <div><label>বিস্তারিত</label><input id="fDetails" placeholder="বর্ণনা দিন..." required></div>
-      </div>
-      <button class="btn primary" type="submit">জমা দিন</button>
-    </form>
-  </div>
-  <div class="panel">
-    <h3>ইনসিডেন্ট লগ</h3>
+    <h3>📊 Expected Demand vs Bus Capacity (তুলনামূলক বিশ্লেষণ)</h3>
+    <p class="muted">প্রতিটি রুটে শিক্ষার্থীদের প্রত্যাশিত চাহিদা এবং বাসের ধারণক্ষমতার রিয়েল-টাইম তুলনা:</p><br>
     <div class="table-wrap"><table>
-      <thead><tr><th>রিপোর্টার</th><th>ধরন</th><th>বিস্তারিত</th><th>স্ট্যাটাস</th></tr></thead>
-      <tbody id="feedbackTable"><tr><td colspan="4">কোনো রিপোর্ট নেই।</td></tr></tbody>
+      <thead><tr><th>রুট</th><th>প্রত্যাশিত যাত্রী (Expected Demand)</th><th>বাস ক্যাপাসিটি (Capacity)</th><th>স্ট্যাটাস (Status)</th></tr></thead>
+      <tbody id="demandComparisonTable"><tr><td colspan="4">তথ্য বিশ্লেষণ করা হচ্ছে...</td></tr></tbody>
     </table></div>
   </div>
 </section>
@@ -310,6 +512,17 @@ footer{margin-top:40px;padding:22px;text-align:center;background:#123b70;color:w
 <footer><p>© 2026 PUB CampusRide | Pundra University of Science & Technology</p></footer>
 
 <script>
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+}
+
+function maskPhone(phone) {
+  if (!phone || phone.length < 6) return phone;
+  const start = phone.slice(0, 5);
+  const end = phone.slice(-1);
+  return start + '*****' + end;
+}
+
 function showPage(pageId, button) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId).classList.add('active');
@@ -320,8 +533,13 @@ function showPage(pageId, button) {
   if (pageId === 'drivers') fetchDrivers();
   if (pageId === 'buses') fetchBuses();
   if (pageId === 'trips') fetchTrips();
-  if (pageId === 'student') fetchIntentions();
-  if (pageId === 'reports') fetchFeedback();
+  if (pageId === 'dispatcher') fetchDispatches();
+  if (pageId === 'breakdowns') fetchBreakdowns();
+  if (pageId === 'urgent-notices') fetchNotices();
+  if (pageId === 'reports-analytics') fetchAnalyticsReports();
+  if (pageId === 'feedback') fetchFeedbackPortal();
+  if (pageId === 'maintenance') fetchMaintenance();
+  if (pageId === 'student') { fetchIntentions(); fetchSavedRoutes(); fetchDemandComparison(); }
 }
 
 function openSchedule(type) { showPage('schedule'); selectSchedule(type); }
@@ -339,7 +557,7 @@ function selectSchedule(type) {
     ['', 'বিকাল ৫:১৫ মিনিট', '—', '—', 'দুপুর ১:৫০ মিনিট', '—', '—', '—', 'দুপুর ১২:২০ মিনিট', '—', 0],
     ['', '—', '—', '—', '—', '—', '—', '—', 'দুপুর ১:৪০ মিনিট', '—', 0],
     ['রবিবার থেকে মঙ্গলবার', 'দুপুর ১:২০ মিনিট', 'সকাল ৮:০০ মিনিট', 'সকাল ৮:২৫ মিনিট', 'সকাল ৮:৩০ মিনিট', 'সকাল ৮:২৫ মিনিট', 'সকাল ৮:৪০ মিনিট', 'সকাল ৮:২০ মিনিট', 'সকাল ৮:৪০ মিনিট', 'সকাল ৮:১৫ মিনিট', 2],
-    ['', 'বিকাল ৪:১৫ মিনিট', '—', '—', 'দুপুর ১:৫০ মিনিট', '—', '—', '—', 'সকাল ৯:২৫ মিনিট', '—', 0]
+    ['', 'বিকাল ৪:১৫ মিনিট', '—', '—', '—', '—', '—', '—', 'সকাল ৯:২৫ মিনিট', '—', 0]
   ];
 
   let tableHTML = '<div class="table-wrap"><table><thead><tr>' + headers.map(h => '<th>' + h + '</th>').join('') + '</tr></thead><tbody>';
@@ -356,32 +574,63 @@ function selectSchedule(type) {
   });
   tableHTML += '</tbody></table></div>';
 
-  const contactHTML = `
-    <h3 style="margin-top:30px;">যোগাযোগ (চালক ও বাস তথ্য):</h3>
-    <div class="table-wrap"><table>
-      <thead><tr><th>রুট</th><th>বাস নং</th><th>ড্রাইভারের নাম</th><th>মোবাইল নম্বর</th></tr></thead>
-      <tbody>
-        <tr><td>বি-ব্লক</td><td>২</td><td>মোঃ আলী আসলাম</td><td>০১৭২৩-০৮৩৯৪০</td></tr>
-        <tr><td>গোবিন্দগঞ্জ</td><td>৩</td><td>মোঃ শহিদুল ইসলাম</td><td>০১৭০৩-১১৬৩২১</td></tr>
-        <tr><td>বনানী</td><td>৮</td><td>মোঃ ডালিম</td><td>০১৭৩৪-৪৯১২৩৫</td></tr>
-        <tr><td>গাবতলী</td><td>৫</td><td>মোঃ তোফাজ্জল</td><td>০১৯৩৪-৮৮৮৬৮৭</td></tr>
-        <tr><td>তিনমাথা</td><td>৬</td><td>মোঃ সৈকত</td><td>০১৭৮৯-৮৮৫৯৮১</td></tr>
-        <tr><td>শেরপুর</td><td>৭</td><td>মোঃ মুনছুর আলী</td><td>০১৭২২-৬৭০৫৮৩</td></tr>
-        <tr><td>সাতমাথা</td><td>৮</td><td>মোঃ আবু তায়ের</td><td>০১৭২৫-৬৯৫৭৬৩</td></tr>
-        <tr><td>দুপচাঁচিয়া</td><td>৯</td><td>মোঃ সাগর</td><td>০১৯১৬-৬৬৯৩১২</td></tr>
-      </tbody>
-    </table></div>
-  `;
-
-  content.innerHTML = tableHTML + contactHTML;
+  content.innerHTML = tableHTML;
 }
 selectSchedule('regular');
 
-function escapeHTML(value) {
-  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function toggleTripDate() {
+  const type = document.getElementById('tType').value;
+  const dateDiv = document.getElementById('dateDiv');
+  dateDiv.style.display = (type === 'One-off') ? 'block' : 'none';
 }
 
-// Route Management Logic (with Edit feature)
+// Urgent Notice Logic
+async function fetchNotices() {
+  const res = await fetch('/api/urgent-notices');
+  const data = await res.json();
+  
+  // Render Home Dashboard Notice
+  const homeBox = document.getElementById('homeNoticeContainer');
+  if (data.length > 0) {
+    homeBox.innerHTML = data.map(n => `
+      <div class="notice">
+        <strong>📢 ${escapeHTML(n.title)}</strong> (${escapeHTML(n.time)})<br>
+        ${escapeHTML(n.content)}
+      </div>
+    `).join('');
+  } else {
+    homeBox.innerHTML = '<p class="muted">বর্তমানে কোনো জরুরি নোটিশ নেই।</p>';
+  }
+
+  // Render Notices Table
+  const tbody = document.getElementById('noticeTable');
+  tbody.innerHTML = data.length ? data.map(n => `
+    <tr><td>${escapeHTML(n.title)}</td><td>${escapeHTML(n.content)}</td><td>${escapeHTML(n.time)}</td>
+    <td><button class="btn danger" onclick="deleteNotice('${n.id}')">Delete</button></td></tr>
+  `).join('') : '<tr><td colspan="4">কোনো নোটিশ নেই।</td></tr>';
+}
+
+document.getElementById('noticeForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    id: 'NOTIC-' + Date.now().toString().slice(-4),
+    title: document.getElementById('nTitle').value.trim(),
+    content: document.getElementById('nContent').value.trim(),
+    time: document.getElementById('nTime').value.trim()
+  };
+  await fetch('/api/urgent-notices', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  document.getElementById('noticeForm').reset();
+  fetchNotices();
+  alert('জরুরি নোটিশ সফলভাবে পাবলিশ করা হয়েছে!');
+});
+
+async function deleteNotice(id) {
+  if(!confirm('নোটিশ ডিলিট করতে চান?')) return;
+  await fetch('/api/urgent-notices/' + id, { method: 'DELETE' });
+  fetchNotices();
+}
+
+// Route Management Logic
 let routes = [];
 async function fetchRoutes() {
   const res = await fetch('/api/routes');
@@ -447,14 +696,14 @@ async function deleteRoute(id) {
   fetchRoutes();
 }
 
-// Drivers API (with Edit feature)
+// Drivers API
 let drivers = [];
 async function fetchDrivers() {
   const res = await fetch('/api/drivers');
   drivers = await res.json();
   const tbody = document.getElementById('driverTable');
   tbody.innerHTML = drivers.length ? drivers.map(d => `
-    <tr><td>${escapeHTML(d.id)}</td><td>${escapeHTML(d.name)}</td><td>${escapeHTML(d.phone)}</td>
+    <tr><td>${escapeHTML(d.id)}</td><td>${escapeHTML(d.name)}</td><td>${maskPhone(escapeHTML(d.phone))}</td>
     <td>${escapeHTML(d.license)}</td><td>${escapeHTML(d.bus)}</td><td>${escapeHTML(d.experience)} yrs</td>
     <td><span class="badge">${escapeHTML(d.status)}</span></td>
     <td>
@@ -511,7 +760,7 @@ async function deleteDriver(id) {
   fetchDrivers();
 }
 
-// Buses API (with Edit feature)
+// Buses API
 let buses = [];
 async function fetchBuses() {
   const res = await fetch('/api/buses');
@@ -521,10 +770,7 @@ async function fetchBuses() {
     <tr><td>${escapeHTML(b.id)}</td><td>${escapeHTML(b.model)}</td><td>${escapeHTML(b.capacity)}</td>
     <td>${escapeHTML(b.route)}</td><td>${escapeHTML(b.driver || 'None')}</td>
     <td><span class="badge">${escapeHTML(b.status)}</span></td>
-    <td>
-      <button class="btn warning" onclick="editBus('${b.id}')">Edit</button>
-      <button class="btn danger" onclick="deleteBus('${b.id}')">Delete</button>
-    </td></tr>
+    <td><button class="btn danger" onclick="deleteBus('${b.id}')">Delete</button></td></tr>
   `).join('') : '<tr><td colspan="7">কোনো বাস পাওয়া যায়নি।</td></tr>';
   document.getElementById('busCount').textContent = buses.length;
 }
@@ -540,32 +786,10 @@ document.getElementById('busForm').addEventListener('submit', async (e) => {
     status: document.getElementById('busStatus').value
   };
   await fetch('/api/buses', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-  resetBusForm();
+  document.getElementById('busForm').reset();
   fetchBuses();
   alert('বাসের তথ্য সংরক্ষিত হয়েছে!');
 });
-
-function editBus(id) {
-  const b = buses.find(item => item.id === id);
-  if (!b) return;
-  document.getElementById('busId').value = b.id;
-  document.getElementById('busId').readOnly = true;
-  document.getElementById('busModel').value = b.model;
-  document.getElementById('busCapacity').value = b.capacity;
-  document.getElementById('busRoute').value = b.route;
-  document.getElementById('busDriver').value = b.driver;
-  document.getElementById('busStatus').value = b.status;
-  document.getElementById('busFormTitle').textContent = 'বাস সম্পাদনা করুন (Edit Bus)';
-  document.getElementById('busSubmitBtn').textContent = 'আপডেট করুন';
-  document.getElementById('busForm').scrollIntoView({behavior:'smooth'});
-}
-
-function resetBusForm() {
-  document.getElementById('busForm').reset();
-  document.getElementById('busId').readOnly = false;
-  document.getElementById('busFormTitle').textContent = 'নতুন বাস যোগ করুন';
-  document.getElementById('busSubmitBtn').textContent = 'সংরক্ষণ করুন';
-}
 
 async function deleteBus(id) {
   if(!confirm('বাস ডিলিট করতে চান?')) return;
@@ -578,17 +802,22 @@ async function fetchTrips() {
   const res = await fetch('/api/trips');
   const trips = await res.json();
   document.getElementById('tripTable').innerHTML = trips.length ? trips.map(t => `
-    <tr><td>${escapeHTML(t.tripId)}</td><td>${escapeHTML(t.route)}</td><td>${escapeHTML(t.busId)}</td>
+    <tr><td>${escapeHTML(t.tripId)}</td><td><span class="badge">${escapeHTML(t.tripType)}</span></td>
+    <td>${escapeHTML(t.tripDate || 'প্রতিদিন (Recurring)')}</td>
+    <td>${escapeHTML(t.route)}</td><td>${escapeHTML(t.busId)}</td>
     <td>${escapeHTML(t.driverId)}</td><td>${escapeHTML(t.departureTime)}</td>
     <td><button class="btn danger" onclick="deleteTrip('${t.tripId}')">Delete</button></td></tr>
-  `).join('') : '<tr><td colspan="6">কোনো ট্রিপ নির্ধারিত নেই।</td></tr>';
+  `).join('') : '<tr><td colspan="8">কোনো ট্রিপ নির্ধারিত নেই।</td></tr>';
   document.getElementById('tripCount').textContent = trips.length;
 }
 
 document.getElementById('tripForm').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const tripType = document.getElementById('tType').value;
   const data = {
     tripId: document.getElementById('tId').value.trim(),
+    tripType: tripType,
+    tripDate: tripType === 'One-off' ? document.getElementById('tDate').value : 'Recurring',
     route: document.getElementById('tRoute').value.trim(),
     busId: document.getElementById('tBus').value.trim(),
     driverId: document.getElementById('tDriver').value.trim(),
@@ -602,6 +831,7 @@ document.getElementById('tripForm').addEventListener('submit', async (e) => {
   } else {
     alertBox.innerHTML = `<div class="notice" style="border-color:#10b981;background:#d1fae5;color:#065f46;">✅ সফলভাবে ট্রিপ শিডিউল করা হয়েছে!</div>`;
     document.getElementById('tripForm').reset();
+    document.getElementById('dateDiv').style.display = 'none';
     fetchTrips();
   }
 });
@@ -612,56 +842,281 @@ async function deleteTrip(id) {
   fetchTrips();
 }
 
+// Dispatcher Portal Logic
+async function fetchDispatches() {
+  const res = await fetch('/api/dispatches');
+  const data = await res.json();
+  const tbody = document.getElementById('dispatchTable');
+  tbody.innerHTML = data.length ? data.map(d => `
+    <tr><td>${escapeHTML(d.tripId)}</td><td><span class="badge info">${escapeHTML(d.status)}</span></td>
+    <td><strong>${escapeHTML(d.eta || 'N/A')}</strong></td>
+    <td>${escapeHTML(d.remarks)}</td><td>${escapeHTML(d.timestamp)}</td>
+    <td><button class="btn danger" onclick="deleteDispatch('${d.tripId}')">Delete</button></td></tr>
+  `).join('') : '<tr><td colspan="6">কোনো লগ পাওয়া যায়নি।</td></tr>';
+}
+
+document.getElementById('dispatchForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    tripId: document.getElementById('disTripId').value.trim(),
+    status: document.getElementById('disStatus').value,
+    eta: document.getElementById('disEta').value.trim(),
+    remarks: document.getElementById('disRemarks').value.trim(),
+    timestamp: new Date().toLocaleTimeString()
+  };
+  await fetch('/api/dispatches', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  document.getElementById('dispatchForm').reset();
+  fetchDispatches();
+  alert('স্ট্যাটাস ও ETA সফলভাবে আপডেট করা হয়েছে!');
+});
+
+async function deleteDispatch(tripId) {
+  if(!confirm('লগ ডিলিট করতে চান?')) return;
+  await fetch('/api/dispatches/' + tripId, { method: 'DELETE' });
+  fetchDispatches();
+}
+
+// Breakdown & Replacement Logic
+async function fetchBreakdowns() {
+  const res = await fetch('/api/breakdowns');
+  const data = await res.json();
+  const tbody = document.getElementById('breakdownTable');
+  tbody.innerHTML = data.length ? data.map(b => `
+    <tr><td>${escapeHTML(b.type)}</td><td>${escapeHTML(b.targetId)}</td><td>${escapeHTML(b.details)}</td>
+    <td><span class="badge ${b.replacement.includes('Shortage') ? 'danger' : 'success'}">${escapeHTML(b.replacement)}</span></td>
+    <td><button class="btn danger" onclick="deleteBreakdown('${b.targetId}')">Delete</button></td></tr>
+  `).join('') : '<tr><td colspan="5">কোনো রেকর্ড নেই।</td></tr>';
+}
+
+document.getElementById('breakdownForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    type: document.getElementById('bType').value,
+    targetId: document.getElementById('bTargetId').value.trim(),
+    details: document.getElementById('bDetails').value.trim()
+  };
+  const res = await fetch('/api/breakdowns', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  const result = await res.json();
+  document.getElementById('breakdownForm').reset();
+  fetchBreakdowns();
+  alert('স্ট্যাটাস প্রসেস করা হয়েছে: ' + result.replacement);
+});
+
+async function deleteBreakdown(targetId) {
+  if(!confirm('ডিলিট করতে চান?')) return;
+  await fetch('/api/breakdowns/' + targetId, { method: 'DELETE' });
+  fetchBreakdowns();
+}
+
+// Trip History & Analytics Reports Logic
+async function fetchAnalyticsReports() {
+  const [tRes, dRes, iRes, bRes] = await Promise.all([
+    fetch('/api/trips').then(r => r.json()),
+    fetch('/api/dispatches').then(r => r.json()),
+    fetch('/api/intentions').then(r => r.json()),
+    fetch('/api/buses').then(r => r.json())
+  ]);
+
+  document.getElementById('repTripCount').textContent = tRes.length;
+  const delayedCancelled = dRes.filter(d => d.status === 'Delayed' || d.status === 'Cancelled');
+  document.getElementById('repDelayCount').textContent = delayedCancelled.length;
+  document.getElementById('repDemandCount').textContent = iRes.length;
+
+  const delayTbody = document.getElementById('repDelayTable');
+  delayTbody.innerHTML = delayedCancelled.length ? delayedCancelled.map(dc => `
+    <tr><td>${escapeHTML(dc.tripId)}</td><td><span class="badge danger">${escapeHTML(dc.status)}</span></td>
+    <td>${escapeHTML(dc.remarks)} (ETA: ${escapeHTML(dc.eta || 'N/A')})</td><td>${escapeHTML(dc.timestamp)}</td></tr>
+  `).join('') : '<tr><td colspan="4">কোনো বিলম্ব বা ক্যান্সেলেশন রেকর্ড নেই।</td></tr>';
+
+  const usageTbody = document.getElementById('repUsageTable');
+  const routesList = ["সাতমাথা টু ক্যাম্পাস", "বি-ব্লক টু ক্যাম্পাস", "গোবিন্দগঞ্জ টু ক্যাম্পাস", "শেরপুর টু ক্যাম্পাস", "গাবতলী টু ক্যাম্পাস"];
+  
+  let usageHtml = '';
+  routesList.forEach(rt => {
+    const matchedBus = bRes.find(b => b.route.includes(rt.split(' ')[0]));
+    const busId = matchedBus ? matchedBus.id : 'BUS-General';
+    const capacity = matchedBus ? matchedBus.capacity : 40;
+    const demand = iRes.filter(i => i.route === rt).length;
+
+    let usageBadge = '<span class="badge success">Optimum</span>';
+    if (demand > capacity) usageBadge = '<span class="badge danger">Overloaded</span>';
+    else if (demand === 0) usageBadge = '<span class="badge warning">Low Usage</span>';
+
+    usageHtml += `<tr><td>${rt}</td><td>${busId}</td><td>${capacity} জন</td><td>${demand} জন</td><td>${usageBadge}</td></tr>`;
+  });
+  usageTbody.innerHTML = usageHtml;
+}
+
+// Passenger Feedback Portal Logic
+async function fetchFeedbackPortal() {
+  const res = await fetch('/api/feedback-portal');
+  const data = await res.json();
+  const tbody = document.getElementById('feedbackPortalTable');
+  tbody.innerHTML = data.length ? data.map(f => `
+    <tr><td>${escapeHTML(f.id)}</td><td>${escapeHTML(f.name)}</td><td>${escapeHTML(f.type)}</td>
+    <td>${escapeHTML(f.details)}</td>
+    <td><span class="badge ${f.status === 'Resolved' ? 'success' : 'warning'}">${escapeHTML(f.status)}</span></td>
+    <td>
+      <button class="btn warning" onclick="updateFeedbackStatus('${f.id}', 'Resolved')">Resolve</button>
+      <button class="btn danger" onclick="deleteFeedbackPortal('${f.id}')">Delete</button>
+    </td></tr>
+  `).join('') : '<tr><td colspan="6">কোনো ফিডব্যাক নেই।</td></tr>';
+}
+
+document.getElementById('feedbackPortalForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    id: 'FB-' + Date.now().toString().slice(-4),
+    name: document.getElementById('fbName').value.trim(),
+    type: document.getElementById('fbType').value,
+    details: document.getElementById('fbDetails').value.trim(),
+    status: 'Pending'
+  };
+  await fetch('/api/feedback-portal', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  document.getElementById('feedbackPortalForm').reset();
+  fetchFeedbackPortal();
+  alert('আপনার ফিডব্যাক সফলভাবে জমা হয়েছে!');
+});
+
+async function updateFeedbackStatus(id, newStatus) {
+  await fetch('/api/feedback-portal/' + id, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: newStatus}) });
+  fetchFeedbackPortal();
+}
+
+async function deleteFeedbackPortal(id) {
+  if(!confirm('ডিলিট করতে চান?')) return;
+  await fetch('/api/feedback-portal/' + id, { method: 'DELETE' });
+  fetchFeedbackPortal();
+}
+
+// Maintenance & Resolution Tracking Logic
+async function fetchMaintenance() {
+  const res = await fetch('/api/maintenance');
+  const data = await res.json();
+  const tbody = document.getElementById('maintenanceTable');
+  tbody.innerHTML = data.length ? data.map(m => {
+    let badgeCls = 'warning';
+    if(m.status === 'Resolved') badgeCls = 'success';
+    if(m.status === 'Pending') badgeCls = 'danger';
+    return `
+      <tr><td>${escapeHTML(m.id)}</td><td>${escapeHTML(m.type)}</td><td>${escapeHTML(m.target)}</td>
+      <td>${escapeHTML(m.details)}</td>
+      <td><span class="badge ${badgeCls}">${escapeHTML(m.status)}</span></td>
+      <td>
+        <button class="btn warning" onclick="updateMaintenanceStatus('${m.id}', 'Resolved')">Resolve</button>
+        <button class="btn danger" onclick="deleteMaintenance('${m.id}')">Delete</button>
+      </td></tr>
+    `;
+  }).join('') : '<tr><td colspan="6">কোনো রেকর্ড নেই।</td></tr>';
+}
+
+document.getElementById('maintForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    id: 'MNT-' + Date.now().toString().slice(-4),
+    type: document.getElementById('mType').value,
+    target: document.getElementById('mTarget').value.trim(),
+    details: document.getElementById('mDetails').value.trim(),
+    status: document.getElementById('mStatus').value
+  };
+  await fetch('/api/maintenance', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  document.getElementById('maintForm').reset();
+  fetchMaintenance();
+  alert('মেইনটেন্যান্স রেকর্ড সফলভাবে সংরক্ষিত হয়েছে!');
+});
+
+async function updateMaintenanceStatus(id, newStatus) {
+  await fetch('/api/maintenance/' + id, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status: newStatus}) });
+  fetchMaintenance();
+}
+
+async function deleteMaintenance(id) {
+  if(!confirm('রেকর্ড ডিলিট করতে চান?')) return;
+  await fetch('/api/maintenance/' + id, { method: 'DELETE' });
+  fetchMaintenance();
+}
+
+// Student Portal Logic
+async function fetchSavedRoutes() {
+  const res = await fetch('/api/saved-routes');
+  const data = await res.json();
+  const list = document.getElementById('savedRoutesList');
+  list.innerHTML = data.length ? data.map(sr => `<span class="badge" style="margin-right:5px;background:#e2e8f0;color:#1e293b;">📌 ${escapeHTML(sr.name)}: ${escapeHTML(sr.route)}</span>`).join('') : 'কোনো রুট সেভ করা হয়নি।';
+}
+
+document.getElementById('savedRouteForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = {
+    name: document.getElementById('srName').value.trim(),
+    route: document.getElementById('srRoute').value
+  };
+  await fetch('/api/saved-routes', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+  fetchSavedRoutes();
+  alert('পছন্দের রুট সফলভাবে সেভ করা হয়েছে!');
+});
+
 async function fetchIntentions() {
   const res = await fetch('/api/intentions');
   const data = await res.json();
-  document.getElementById('intentionTable').innerHTML = data.length ? data.map(i => `
-    <tr><td>${escapeHTML(i.name)}</td><td>${escapeHTML(i.route)}</td><td>${escapeHTML(i.time)}</td>
-    <td><span class="badge">Recorded</span></td></tr>
-  `).join('') : '<tr><td colspan="4">কোনো রেকর্ড নেই।</td></tr>';
+  fetchDemandComparison();
 }
 
 document.getElementById('intentionForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = {
     name: document.getElementById('sName').value.trim(),
-    route: document.getElementById('sRoute').value.trim(),
+    route: document.getElementById('sRoute').value,
     time: document.getElementById('sTime').value.trim()
   };
   await fetch('/api/intentions', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
   document.getElementById('intentionForm').reset();
   fetchIntentions();
-  alert('চাহিদা সংরক্ষিত হয়েছে!');
+  alert('ইন্টেনশন জমা হয়েছে!');
 });
 
-async function fetchFeedback() {
-  const res = await fetch('/api/feedback');
-  const data = await res.json();
-  document.getElementById('feedbackTable').innerHTML = data.length ? data.map(f => `
-    <tr><td>${escapeHTML(f.name)}</td><td>${escapeHTML(f.type)}</td><td>${escapeHTML(f.details)}</td>
-    <td><span class="badge">Logged</span></td></tr>
-  `).join('') : '<tr><td colspan="4">কোনো রিপোর্ট নেই।</td></tr>';
+async function fetchDemandComparison() {
+  const [iRes, bRes] = await Promise.all([
+    fetch('/api/intentions').then(r => r.json()),
+    fetch('/api/buses').then(r => r.json())
+  ]);
+
+  const demandMap = {};
+  iRes.forEach(i => {
+    demandMap[i.route] = (demandMap[i.route] || 0) + 1;
+  });
+
+  const routesList = ["সাতমাথা টু ক্যাম্পাস", "বি-ব্লক টু ক্যাম্পাস", "গোবিন্দগঞ্জ টু ক্যাম্পাস", "শেরপুর টু ক্যাম্পাস", "গাবতলী টু ক্যাম্পাস"];
+  const tbody = document.getElementById('demandComparisonTable');
+  
+  let html = '';
+  routesList.forEach(rt => {
+    const demand = demandMap[rt] || 0;
+    const matchedBus = bRes.find(b => b.route.includes(rt.split(' ')[0]));
+    const capacity = matchedBus ? parseInt(matchedBus.capacity) : 40;
+    
+    let badgeClass = 'success';
+    let statusText = 'Normal (স্বাভাবিক)';
+    if (demand > capacity) {
+      badgeClass = 'danger';
+      statusText = 'Overloaded (অতিরিক্ত চাপ)';
+    }
+
+    html += `<tr><td>${rt}</td><td>${demand} জন</td><td>${capacity} জন</td><td><span class="badge ${badgeClass}">${statusText}</span></td></tr>`;
+  });
+  tbody.innerHTML = html;
 }
-
-document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const data = {
-    name: document.getElementById('fName').value.trim(),
-    type: document.getElementById('fType').value.trim(),
-    details: document.getElementById('fDetails').value.trim()
-  };
-  await fetch('/api/feedback', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-  document.getElementById('feedbackForm').reset();
-  fetchFeedback();
-  alert('রিপোর্ট জমা হয়েছে!');
-});
 
 fetchRoutes();
 fetchDrivers();
 fetchBuses();
 fetchTrips();
+fetchDispatches();
+fetchBreakdowns();
+fetchNotices();
+fetchAnalyticsReports();
+fetchFeedbackPortal();
+fetchMaintenance();
 fetchIntentions();
-fetchFeedback();
 </script>
 </body>
 </html>
@@ -721,7 +1176,12 @@ def handle_trips():
     global trips_db
     if request.method == "POST":
         data = request.json
-        overlap = any(t["busId"] == data["busId"] or t["driverId"] == data["driverId"] for t in trips_db if t["departureTime"] == data["departureTime"])
+        overlap = any(
+            (t["busId"] == data["busId"] or t["driverId"] == data["driverId"]) and 
+            t["departureTime"] == data["departureTime"] and
+            (t.get("tripDate") == data.get("tripDate") or t["tripType"] == "Recurring" or data["tripType"] == "Recurring")
+            for t in trips_db
+        )
         if overlap:
             return jsonify({"success": False, "overlap": True})
         trips_db = [t for t in trips_db if t["tripId"] != data["tripId"]]
@@ -735,6 +1195,123 @@ def delete_trip(trip_id):
     trips_db = [t for t in trips_db if t["tripId"] != trip_id]
     return jsonify({"success": True})
 
+@app.route("/api/dispatches", methods=["GET", "POST"])
+def handle_dispatches():
+    global dispatch_logs_db
+    if request.method == "POST":
+        data = request.json
+        dispatch_logs_db = [d for d in dispatch_logs_db if d["tripId"] != data["tripId"]]
+        dispatch_logs_db.append(data)
+        return jsonify({"success": True})
+    return jsonify(dispatch_logs_db)
+
+@app.route("/api/dispatches/<trip_id>", methods=["DELETE"])
+def delete_dispatch(trip_id):
+    global dispatch_logs_db
+    dispatch_logs_db = [d for d in dispatch_logs_db if d["tripId"] != trip_id]
+    return jsonify({"success": True})
+
+@app.route("/api/breakdowns", methods=["GET", "POST"])
+def handle_breakdowns():
+    global breakdowns_db, buses_db, drivers_db
+    if request.method == "POST":
+        data = request.json
+        target = data["targetId"]
+        issue_type = data["type"]
+        
+        replacement_msg = ""
+        if "Bus" in issue_type:
+            free_bus = next((b for b in buses_db if b["status"] == "Available" and b["id"] != target), None)
+            if free_bus:
+                replacement_msg = f"Assigned Replacement Bus: {free_bus['id']} ({free_bus['route']})"
+            else:
+                replacement_msg = "⚠️ Capacity Shortage Flagged! No replacement bus available."
+        else:
+            free_driver = next((d for d in drivers_db if d["status"] == "Available" and d["id"] != target), None)
+            if free_driver:
+                start = free_driver['phone'][:5] if len(free_driver['phone']) >= 6 else free_driver['phone']
+                end = free_driver['phone'][-1:] if len(free_driver['phone']) >= 1 else ''
+                masked_p = start + '*****' + end
+                replacement_msg = f"Assigned Replacement Driver: {free_driver['name']} ({masked_p})"
+            else:
+                replacement_msg = "⚠️ Capacity Shortage Flagged! No replacement driver available."
+        
+        data["replacement"] = replacement_msg
+        breakdowns_db = [b for b in breakdowns_db if b["targetId"] != target]
+        breakdowns_db.append(data)
+        return jsonify({"success": True, "replacement": replacement_msg})
+    return jsonify(breakdowns_db)
+
+@app.route("/api/breakdowns/<target_id>", methods=["DELETE"])
+def delete_breakdown(target_id):
+    global breakdowns_db
+    breakdowns_db = [b for b in breakdowns_db if b["targetId"] != target_id]
+    return jsonify({"success": True})
+
+@app.route("/api/urgent-notices", methods=["GET", "POST"])
+def handle_urgent_notices():
+    global urgent_notices_db
+    if request.method == "POST":
+        urgent_notices_db.insert(0, request.json)
+        return jsonify({"success": True})
+    return jsonify(urgent_notices_db)
+
+@app.route("/api/urgent-notices/<notice_id>", methods=["DELETE"])
+def delete_urgent_notice(notice_id):
+    global urgent_notices_db
+    urgent_notices_db = [n for n in urgent_notices_db if n["id"] != notice_id]
+    return jsonify({"success": True})
+
+@app.route("/api/feedback-portal", methods=["GET", "POST"])
+def handle_feedback_portal():
+    global feedback_db
+    if request.method == "POST":
+        feedback_db.append(request.json)
+        return jsonify({"success": True})
+    return jsonify(feedback_db)
+
+@app.route("/api/feedback-portal/<fb_id>", methods=["PUT", "DELETE"])
+def update_delete_feedback(fb_id):
+    global feedback_db
+    if request.method == "PUT":
+        data = request.json
+        for f in feedback_db:
+            if f["id"] == fb_id:
+                f["status"] = data.get("status", f["status"])
+        return jsonify({"success": True})
+    elif request.method == "DELETE":
+        feedback_db = [f for f in feedback_db if f["id"] != fb_id]
+        return jsonify({"success": True})
+
+@app.route("/api/maintenance", methods=["GET", "POST"])
+def handle_maintenance():
+    global maintenance_db
+    if request.method == "POST":
+        maintenance_db.append(request.json)
+        return jsonify({"success": True})
+    return jsonify(maintenance_db)
+
+@app.route("/api/maintenance/<m_id>", methods=["PUT", "DELETE"])
+def update_delete_maintenance(m_id):
+    global maintenance_db
+    if request.method == "PUT":
+        data = request.json
+        for m in maintenance_db:
+            if m["id"] == m_id:
+                m["status"] = data.get("status", m["status"])
+        return jsonify({"success": True})
+    elif request.method == "DELETE":
+        maintenance_db = [m for m in maintenance_db if m["id"] != m_id]
+        return jsonify({"success": True})
+
+@app.route("/api/saved-routes", methods=["GET", "POST"])
+def handle_saved_routes():
+    global saved_routes_db
+    if request.method == "POST":
+        saved_routes_db.append(request.json)
+        return jsonify({"success": True})
+    return jsonify(saved_routes_db)
+
 @app.route("/api/intentions", methods=["GET", "POST"])
 def handle_intentions():
     global intentions_db
@@ -742,14 +1319,6 @@ def handle_intentions():
         intentions_db.append(request.json)
         return jsonify({"success": True})
     return jsonify(intentions_db)
-
-@app.route("/api/feedback", methods=["GET", "POST"])
-def handle_feedback():
-    global feedback_db
-    if request.method == "POST":
-        feedback_db.append(request.json)
-        return jsonify({"success": True})
-    return jsonify(feedback_db)
 
 if __name__ == "__main__":
     app.run(debug=True)
