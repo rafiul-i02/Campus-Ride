@@ -1,7 +1,7 @@
 # 🚌 PUB CampusRide - Pundra University Transport Portal
 
 > **Demo Video Link:** https://drive.google.com/file/d/1xQFHxYIkpo04YTyv-9MolI1z1YMHspXz/view?usp=drive_link
-> **Live Deployment Link:** https://4cbbdf23-0f01-4a95-86f5-c97e96dbca0b-00-3talj33c890kk.pike.replit.dev/
+
 
 ---
 
